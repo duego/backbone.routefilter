@@ -48,8 +48,11 @@
         // the user to return false from within the before filter
         // to prevent the original route callback and after
         // filter from running.
-        var callbackArgs = [ route, _.toArray(arguments) ];
-        var beforeCallback;
+        var callbackArgs = _.toArray(arguments),
+          beforeAfterArgs = [ route, callbackArgs ],
+          beforeCallback,
+          beforeResult,
+          mainAfterCallbacks;
 
         if ( _.isFunction(this.before) ) {
 
@@ -68,41 +71,57 @@
           beforeCallback = nop;
         }
 
+        beforeResult = beforeCallback.apply(this, beforeAfterArgs);
+
         // If the before callback fails during its execusion (by returning)
         // false, then do not proceed with the route triggering.
-        if ( beforeCallback.apply(this, callbackArgs) === false ) {
+        if ( beforeResult === false ) {
           return;
         }
 
-        // If the callback exists, then call it. This means that the before
-        // and after filters will be called whether or not an actual
-        // callback function is supplied to handle a given route.
-        if( callback ) {
-          callback.apply( this, arguments );
+        mainAfterCallbacks = _.bind(function(){
+
+          // If the callback exists, then call it. This means that the before
+          // and after filters will be called whether or not an actual
+          // callback function is supplied to handle a given route.
+          if( callback ) {
+            callback.apply( this, callbackArgs );
+          }
+
+          var afterCallback;
+          if ( _.isFunction(this.after) ) {
+
+            // If the after filter is a single funciton, then call it with
+            // the proper arguments.
+            afterCallback = this.after;
+
+          } else if ( typeof this.after[route] !== "undefined" ) {
+
+            // otherwise if we have a hash of routes, call the appropriate
+            // callback based on the route name.
+            afterCallback = this.after[route];
+
+          } else {
+
+            // otherwise, if we have a has of routes but no after callback
+            // for this route, just use the nop function.
+            afterCallback = nop;
+          }
+
+          // Call the after filter.
+          afterCallback.apply( this, beforeAfterArgs );
+
+        }, this);
+
+        // If the beforeCallback returned a deferred object then
+        // execute the main callback after the deferred object is resolved
+        if ( _.isObject(beforeResult) && beforeResult.done ) {
+          beforeResult.done(mainAfterCallbacks);
         }
-
-        var afterCallback;
-        if ( _.isFunction(this.after) ) {
-
-          // If the after filter is a single funciton, then call it with
-          // the proper arguments.
-          afterCallback = this.after;
-
-        } else if ( typeof this.after[route] !== "undefined" ) {
-
-          // otherwise if we have a hash of routes, call the appropriate
-          // callback based on the route name.
-          afterCallback = this.after[route];
-
-        } else {
-
-          // otherwise, if we have a has of routes but no after callback
-          // for this route, just use the nop function.
-          afterCallback = nop;
+        // otherwise, execute the main callback immediately
+        else {
+          mainAfterCallbacks();
         }
-
-        // Call the after filter.
-        afterCallback.apply( this, callbackArgs );
 
       }, this);
 

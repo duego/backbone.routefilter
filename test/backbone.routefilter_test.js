@@ -198,7 +198,6 @@
             harness.cache.after[""] = (route||true);
           },
           "page/:id" : function( route ) {
-            console.log(arguments);
             harness.cache.after["page/:id"] = (route||true);
           },
           "foo/:id" : function( route ) {
@@ -228,7 +227,7 @@
     }
   });
 
-  // Test that when navigating to a specific route, its before and 
+  // Test that when navigating to a specific route, its before and
   // after callbacks are triggered.
   test("Navigate to route and verify only its before and after filters trigger", 18, function() {
 
@@ -240,17 +239,17 @@
       harness.router.navigate(route, true);
 
       // verify the callbacks triggered for it
-      ok(harness.cache.before[route], "successfully executed before callback for " + 
+      ok(harness.cache.before[route], "successfully executed before callback for " +
         route + " route");
-      ok(harness.cache.after[route], "successfully executed after callback for " + 
+      ok(harness.cache.after[route], "successfully executed after callback for " +
         route + " route");
 
       // make sure none of the other routes triggered
       _.each( routes, function(other_callback, other_route) {
         if ( route !== other_route ) {
-          ok(typeof harness.cache.before[other_route] === "undefined" , 
+          ok(typeof harness.cache.before[other_route] === "undefined" ,
             "Correctly did not execute before callback for " + other_route + " route");
-          ok(typeof harness.cache.after[other_route] === "undefined", 
+          ok(typeof harness.cache.after[other_route] === "undefined",
             "Correctly did not execute after callback for " + other_route + " route");
         }
       });
@@ -334,5 +333,77 @@
 
   });
 
+  module("Using deferred before", {
+    setup: function() {
+      var ctx = this;
+
+      // Set up a cache to store test data in
+      ctx.cache = {};
+
+      // Set up a a Router.
+      ctx.Router = Backbone.Router.extend({
+        routes: {
+          "page/:id": "page"
+        },
+        before: function( route, params ) {
+          ctx.defer = $.Deferred();
+          ctx.cache.before = {
+            params: params,
+            route: route
+          };
+          return ctx.defer.promise();
+        },
+        after: function( route, params ) {
+          ctx.cache.after = {
+            params: params,
+            route: route
+          };
+        },
+        page: function() {
+          ctx.cache.route = {
+            route: 'page',
+            params: [].slice.call(arguments)
+          };
+        }
+      });
+
+      // Instantiate the Router.
+      ctx.router = new ctx.Router();
+
+      // Start the history.
+      Backbone.history.start();
+      ctx.router.navigate("", true);
+    },
+    teardown: function() {
+      this.router.navigate("", false);
+      Backbone.history.stop();
+    }
+  });
+
+  // Support deferred before callbacks
+  test("Deferred before", 5, function() {
+    var ctx = this;
+
+    ctx.router.navigate('page/foo', true);
+
+    deepEqual(ctx.cache.before, {
+      params: ["foo"],
+      route: "page/:id"
+    }, "before triggered");
+    ok(_.isUndefined(ctx.cache.route), "route not triggered");
+    ok(_.isUndefined(ctx.cache.after), "after not triggered");
+
+    ctx.defer.resolve();
+
+    deepEqual(ctx.cache.route, {
+      route: 'page',
+      params: ["foo"]
+    }, "route triggered");
+    deepEqual(ctx.cache.after, {
+      params: ["foo"],
+      route: "page/:id"
+    }, "after triggered");
+
+  });
 
 }(jQuery, Backbone, _));
