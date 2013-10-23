@@ -71,6 +71,14 @@
           beforeCallback = nop;
         }
 
+        // If there's a before handler for all routes,
+        // execute it and respect its result
+        if ( _.isFunction(this.before['*']) ) {
+          if ( this.before['*'].apply(this, beforeAfterArgs) === false ) {
+            return;
+          }
+        }
+
         beforeResult = beforeCallback.apply(this, beforeAfterArgs);
 
         // If the before callback fails during its execusion (by returning)

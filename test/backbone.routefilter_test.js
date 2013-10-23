@@ -406,4 +406,75 @@
 
   });
 
+  module("Using hashes for before and a general * before hash", {
+    setup : function() {
+      var ctx = this;
+
+      // Set up a cache to store test data in
+      ctx.cache = { before : {} };
+
+
+      // Set up a a Router.
+      ctx.Router = Backbone.Router.extend({
+        routes: {
+          "page/:id": "page"
+        },
+
+        before: {
+          "*" : function( route, params ) {
+            ctx.cache.before["*"] = (route||true);
+            if (params[0] === '789') {
+              return false;
+            }
+          },
+          "page/:id" : function( route ) {
+            ctx.cache.before["page/:id"] = (route||true);
+          },
+          "foo/:id" : function( route ) {
+            ctx.cache.before["foo/:id"] = (route||true);
+          }
+        },
+        index: function( route ){
+          ctx.cache.route = "";
+        },
+        page: function( route ){
+          ctx.cache.route = route;
+        }
+      });
+
+      // Instantiate the Router.
+      ctx.router = new ctx.Router();
+
+      // Start the history.
+      Backbone.history.start();
+      ctx.router.navigate("", true);
+
+    },
+
+    teardown: function() {
+      this.router.navigate("", false);
+      Backbone.history.stop();
+    }
+  });
+
+  test("Navigate to route and verify only its before filter trigger", 6, function() {
+
+    var ctx = this;
+
+    ctx.router.navigate("page/123", true);
+
+    ok(ctx.cache.before["*"], "successfully executed * before callback for page route");
+    ok(ctx.cache.before["page/:id"], "successfully executed before callback for page route");
+    ok(!ctx.cache.before["foo/:id"], "before callback for foo route not executed");
+
+    ctx.cache.before = {};
+
+    ctx.router.navigate("page/789", true);
+
+    ok(ctx.cache.before["*"], "successfully executed * before callback for page route");
+    ok(!ctx.cache.before["page/:id"], "before callback for page route not executed");
+    ok(!ctx.cache.before["foo/:id"], "before callback for foo route not executed");
+
+  });
+
 }(jQuery, Backbone, _));
