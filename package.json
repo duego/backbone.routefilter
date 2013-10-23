@@ -1,7 +1,7 @@
 {
   "name": "backbone.routefilter",
   "description": "Before and after filters for Backbone.Router.",
-  "version": "0.3.0-deferred",
+  "version": "0.3.1-before-all",
   "homepage": "https://github.com/duego/backbone.routefilter",
   "author": {
     "name": "Boaz Sender",
